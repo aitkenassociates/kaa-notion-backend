@@ -11,7 +11,7 @@
 ## Phase 2: Lead Capture & Intake (Current Focus)
 
 ### 2.1 Tier Router Implementation
-- [ ] `new-util`: tierRouter.ts - Implement tier recommendation algorithm with IntakeFormData input, returns TierRecommendation with tier (1-4), reason, confidence, needsManualReview
+- [x] `new-util`: tierRouter.ts - Implement tier recommendation algorithm with IntakeFormData input, returns TierRecommendation with tier (1-4), reason, confidence, needsManualReview
 - [ ] `test`: tierRouter.test.ts - Test all tier routing logic: budget ranges, timelines, project types, asset combinations, edge cases
 
 ### 2.2 Lead API Endpoints
@@ -181,6 +181,7 @@
 - [x] Initial project setup
 - [x] Claude Code configuration files (.claude/config.json, prompts.md, context/)
 - [x] Updated .cursorrules with comprehensive guidelines
+- [x] `new-util`: tierRouter.ts - Tier recommendation algorithm implementation
 
 ---
 
