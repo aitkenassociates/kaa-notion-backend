@@ -29,6 +29,10 @@ build/
 # Testing
 coverage/
 .nyc_output/
+.lighthouseci/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Misc
 *.pem

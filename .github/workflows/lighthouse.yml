@@ -1,0 +1,87 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    name: Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm run install-all
+
+      - name: Build frontend
+        run: cd kaa-app && npm run build
+        env:
+          CI: false
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.13.x
+
+      - name: Run Lighthouse CI
+        run: lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+          retention-days: 30
+
+  lighthouse-desktop:
+    name: Lighthouse Desktop Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm run install-all
+
+      - name: Build frontend
+        run: cd kaa-app && npm run build
+        env:
+          CI: false
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.13.x
+
+      - name: Run Lighthouse CI (Desktop)
+        run: |
+          lhci autorun --collect.settings.formFactor=desktop \
+            --collect.settings.screenEmulation.mobile=false \
+            --collect.settings.screenEmulation.width=1350 \
+            --collect.settings.screenEmulation.height=940
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Desktop results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results-desktop
+          path: .lighthouseci/
+          retention-days: 30

@@ -7,6 +7,10 @@
     "build": "echo 'No build required for API server'",
     "dev": "concurrently \"npm run start\" \"cd kaa-app && npm start\"",
     "install-all": "npm install && cd kaa-app && npm install",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --reporters=default --reporters=jest-junit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
@@ -31,7 +35,10 @@
   "devDependencies": {
     "@prisma/client": "^7.2.0",
     "concurrently": "^8.2.2",
-    "prisma": "^5.22.0"
+    "jest": "^29.7.0",
+    "jest-junit": "^16.0.0",
+    "prisma": "^5.22.0",
+    "supertest": "^7.0.0"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
