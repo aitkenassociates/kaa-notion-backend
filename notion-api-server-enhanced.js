@@ -9,12 +9,28 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
+// Import new route modules
+const projectRoutes = require('./routes/projects');
+const milestoneRoutes = require('./routes/milestones');
+const activityRoutes = require('./routes/activity');
+const notificationRoutes = require('./routes/notifications');
+const notionSyncRoutes = require('./routes/notion-sync');
+const subscriptionRoutes = require('./routes/subscriptions');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Mount new API routes
+app.use('/api/projects', projectRoutes);
+app.use('/api/milestones', milestoneRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/notion-sync', notionSyncRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // File upload configuration - use memory storage for Vercel
 const upload = multer({ 
