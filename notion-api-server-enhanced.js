@@ -1,3 +1,4 @@
+const Sentry = require('@sentry/node');
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
@@ -8,6 +9,18 @@ const { OpenAI } = require('openai');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+
+// Initialize Sentry for error monitoring
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+  });
+  console.log('✅ Sentry monitoring initialized');
+} else {
+  console.log('⚠️  WARNING: SENTRY_DSN not set - error monitoring disabled');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -996,11 +1009,12 @@ IMPORTANT: The user is asking about support agents or pricing. Include detailed 
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     notion_configured: !!process.env.NOTION_API_KEY,
     email_configured: !!process.env.EMAIL_USER,
     openai_configured: !!process.env.OPENAI_API_KEY,
+    sentry_configured: !!process.env.SENTRY_DSN,
     databases_configured: !!(CLIENT_CREDENTIALS_DB && ACTIVITY_LOG_DB),
     timestamp: new Date().toISOString()
   });
@@ -1171,6 +1185,15 @@ app.delete('/api/client/design-ideas/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete design idea' });
   }
 });
+
+// ============================================
+// SENTRY ERROR HANDLER (must be after routes)
+// ============================================
+
+// Sentry error handler middleware - captures errors and sends to Sentry
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // ============================================
 // START SERVER

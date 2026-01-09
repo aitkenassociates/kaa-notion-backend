@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@notionhq/client": "^5.1.0",
+    "@sentry/node": "^8.0.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
