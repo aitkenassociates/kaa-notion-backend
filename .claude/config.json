@@ -1,0 +1,37 @@
+{
+  "project": {
+    "name": "kaa-notion-backend",
+    "type": "fullstack",
+    "description": "SAGE MVP Platform - tiered landscape architecture services"
+  },
+  "context": {
+    "frontend": "react-typescript",
+    "backend": "express-node",
+    "database": ["supabase-postgres", "notion-api"],
+    "orm": "prisma",
+    "payments": "stripe",
+    "architecture": "hybrid-data"
+  },
+  "paths": {
+    "frontend": "kaa-app/src",
+    "backend": "server",
+    "prisma": "prisma",
+    "docs": "docs",
+    "api": "notion-api-server-enhanced.js"
+  },
+  "commands": {
+    "dev": "npm run dev",
+    "start": "npm start",
+    "test": "npm test",
+    "prisma:studio": "npm run prisma:studio",
+    "prisma:migrate": "npm run prisma:migrate"
+  },
+  "businessContext": {
+    "tiers": {
+      "sage-1": "DIY guidance package",
+      "sage-2": "Design package",
+      "sage-3": "Full service",
+      "kaa-4": "White-glove luxury (invitation only)"
+    }
+  }
+}
