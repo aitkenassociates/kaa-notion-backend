@@ -3,6 +3,8 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Read environment variables from file.
@@ -10,6 +12,71 @@ import { defineConfig, devices } from '@playwright/test';
  */
 // import dotenv from 'dotenv';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+/**
+ * Auto-detect available Chromium executable from Playwright cache
+ */
+function findChromiumExecutable(): string | undefined {
+  // Use environment variable if provided
+  if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+    return process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+  }
+
+  // Look for cached Chromium versions
+  const cacheDir = path.join(process.env.HOME || '/root', '.cache', 'ms-playwright');
+
+  if (!fs.existsSync(cacheDir)) {
+    return undefined;
+  }
+
+  // Find available chromium directories (sorted descending to prefer newer versions)
+  const dirs = fs.readdirSync(cacheDir)
+    .filter(d => d.startsWith('chromium-') && !d.includes('headless'))
+    .sort((a, b) => {
+      const versionA = parseInt(a.split('-')[1]) || 0;
+      const versionB = parseInt(b.split('-')[1]) || 0;
+      return versionB - versionA;
+    });
+
+  for (const dir of dirs) {
+    const chromePath = path.join(cacheDir, dir, 'chrome-linux', 'chrome');
+    if (fs.existsSync(chromePath)) {
+      console.log(`Using cached Chromium: ${chromePath}`);
+      return chromePath;
+    }
+  }
+
+  return undefined;
+}
+
+const chromiumExecutable = findChromiumExecutable();
+
+/**
+ * Chrome launch arguments optimized for containerized/restricted environments
+ */
+const chromiumArgs = [
+  '--disable-gpu',
+  '--disable-software-rasterizer',
+  '--disable-dev-shm-usage',
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-background-networking',
+  '--disable-default-apps',
+  '--disable-extensions',
+  '--disable-sync',
+  '--disable-translate',
+  '--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows',
+  '--disable-renderer-backgrounding',
+  '--disable-infobars',
+  '--no-first-run',
+  '--no-zygote',
+  '--single-process',
+  '--ignore-certificate-errors',
+  '--allow-running-insecure-content',
+  '--disable-web-security',
+  '--disable-features=IsolateOrigins,site-per-process',
+];
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -51,17 +118,11 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          // Use custom executable path if provided, otherwise let Playwright use its default
-          ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH && {
-            executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+          // Use auto-detected or custom executable path
+          ...(chromiumExecutable && {
+            executablePath: chromiumExecutable,
           }),
-          args: [
-            '--disable-gpu',
-            '--disable-software-rasterizer',
-            '--disable-dev-shm-usage',
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-          ],
+          args: chromiumArgs,
         },
       },
     },
@@ -82,17 +143,11 @@ export default defineConfig({
       use: {
         ...devices['Pixel 5'],
         launchOptions: {
-          // Use custom executable path if provided, otherwise let Playwright use its default
-          ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH && {
-            executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+          // Use auto-detected or custom executable path
+          ...(chromiumExecutable && {
+            executablePath: chromiumExecutable,
           }),
-          args: [
-            '--disable-gpu',
-            '--disable-software-rasterizer',
-            '--disable-dev-shm-usage',
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-          ],
+          args: chromiumArgs,
         },
       },
     },
