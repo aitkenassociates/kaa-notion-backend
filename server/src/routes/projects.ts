@@ -8,7 +8,7 @@
  * - PATCH /api/projects/:id - Update project status (admin only)
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { createPrismaAdapter } from '../services/prismaAdapter';
 import { createProjectService, ProjectStatus } from '../services/projectService';

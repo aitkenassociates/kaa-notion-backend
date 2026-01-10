@@ -270,6 +270,11 @@ app.post('/api/stripe/checkout', async (req, res, next) => {
       });
     }
 
+    // Check Stripe is initialized
+    if (!stripe) {
+      return res.status(500).json({ error: 'Payment system not configured' });
+    }
+
     // Create Stripe Checkout session
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

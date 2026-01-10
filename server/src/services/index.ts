@@ -217,7 +217,7 @@ export {
   cacheStats,
   isCacheAvailable,
   withCache,
-  CacheKeys,
+  CACHE_KEYS,
   CacheTags,
   type CacheConfig,
   type CacheOptions,

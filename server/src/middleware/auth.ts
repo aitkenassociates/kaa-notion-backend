@@ -35,7 +35,7 @@ export interface TokenPayload {
 export interface AuthenticatedUser {
   id: string;
   userId: string; // Alias for compatibility
-  email: string | null;
+  email: string;
   name: string | null;
   role: string;
   userType: 'KAA_CLIENT' | 'SAGE_CLIENT' | 'TEAM' | 'ADMIN';

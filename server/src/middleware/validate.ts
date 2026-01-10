@@ -7,7 +7,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodSchema, ZodError } from 'zod';
 import { validationError } from '../utils/AppError';
-import { formatZodErrors, getFirstError } from '../utils/validators';
+import { formatZodErrors, getFirstError as getFirstErrorFromValidators } from '../utils/validators';
 
 // ============================================================================
 // TYPES

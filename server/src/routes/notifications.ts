@@ -190,7 +190,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    await notificationService.deleteNotification(id, user.id);
+    await notificationService.delete(id, user.id);
 
     return res.json({
       success: true,

@@ -9,6 +9,8 @@ declare module '@prisma/client' {
     $queryRaw<T = any>(query: TemplateStringsArray | string, ...values: any[]): Promise<T>;
     $executeRaw(query: TemplateStringsArray | string, ...values: any[]): Promise<number>;
     $transaction<T>(fn: (prisma: PrismaClient) => Promise<T>): Promise<T>;
+    $transaction<T>(promises: Promise<T>[]): Promise<T[]>;
+    $transaction<T>(arg: ((prisma: PrismaClient) => Promise<T>) | Promise<T>[], options?: any): Promise<T | T[]>;
 
     // Models
     user: any;
@@ -34,6 +36,7 @@ declare module '@prisma/client' {
     designIdea: any;
     portfolioProject: any;
     portfolioImage: any;
+    portfolioTag: any;
   }
 
   export namespace Prisma {
@@ -41,12 +44,15 @@ declare module '@prisma/client' {
     export type TransactionClient = PrismaClient;
     export type InputJsonValue = string | number | boolean | null | { [key: string]: InputJsonValue } | InputJsonValue[];
     export type PrismaClientOptions = any;
+
+    // TransactionIsolationLevel as both const and type
     export const TransactionIsolationLevel: {
       ReadUncommitted: 'ReadUncommitted';
       ReadCommitted: 'ReadCommitted';
       RepeatableRead: 'RepeatableRead';
       Serializable: 'Serializable';
     };
+    export type TransactionIsolationLevel = 'ReadUncommitted' | 'ReadCommitted' | 'RepeatableRead' | 'Serializable';
 
     // Select types for query optimization
     export type UserSelect = Record<string, boolean | any>;
@@ -109,83 +115,95 @@ declare module '@prisma/client' {
     export class PrismaClientInitializationError extends Error {}
   }
 
-  // Enums
-  export enum UserType {
-    KAA_CLIENT = 'KAA_CLIENT',
-    SAGE_CLIENT = 'SAGE_CLIENT',
-    TEAM = 'TEAM',
-    ADMIN = 'ADMIN'
-  }
+  // Use string literal union types instead of enums for better compatibility
+  export type UserType = 'KAA_CLIENT' | 'SAGE_CLIENT' | 'TEAM' | 'ADMIN';
+  export const UserType: {
+    KAA_CLIENT: 'KAA_CLIENT';
+    SAGE_CLIENT: 'SAGE_CLIENT';
+    TEAM: 'TEAM';
+    ADMIN: 'ADMIN';
+  };
 
-  export enum LeadStatus {
-    NEW = 'NEW',
-    QUALIFIED = 'QUALIFIED',
-    NEEDS_REVIEW = 'NEEDS_REVIEW',
-    CONVERTED = 'CONVERTED',
-    CLOSED = 'CLOSED'
-  }
+  export type LeadStatus = 'NEW' | 'QUALIFIED' | 'NEEDS_REVIEW' | 'CONVERTED' | 'CLOSED';
+  export const LeadStatus: {
+    NEW: 'NEW';
+    QUALIFIED: 'QUALIFIED';
+    NEEDS_REVIEW: 'NEEDS_REVIEW';
+    CONVERTED: 'CONVERTED';
+    CLOSED: 'CLOSED';
+  };
 
-  export enum ProjectStatus {
-    INTAKE = 'INTAKE',
-    ONBOARDING = 'ONBOARDING',
-    IN_PROGRESS = 'IN_PROGRESS',
-    AWAITING_FEEDBACK = 'AWAITING_FEEDBACK',
-    REVISIONS = 'REVISIONS',
-    DELIVERED = 'DELIVERED',
-    CLOSED = 'CLOSED'
-  }
+  export type ProjectStatus = 'INTAKE' | 'ONBOARDING' | 'IN_PROGRESS' | 'AWAITING_FEEDBACK' | 'REVISIONS' | 'DELIVERED' | 'CLOSED';
+  export const ProjectStatus: {
+    INTAKE: 'INTAKE';
+    ONBOARDING: 'ONBOARDING';
+    IN_PROGRESS: 'IN_PROGRESS';
+    AWAITING_FEEDBACK: 'AWAITING_FEEDBACK';
+    REVISIONS: 'REVISIONS';
+    DELIVERED: 'DELIVERED';
+    CLOSED: 'CLOSED';
+  };
 
-  export enum MilestoneStatus {
-    PENDING = 'PENDING',
-    IN_PROGRESS = 'IN_PROGRESS',
-    COMPLETED = 'COMPLETED'
-  }
+  export type MilestoneStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  export const MilestoneStatus: {
+    PENDING: 'PENDING';
+    IN_PROGRESS: 'IN_PROGRESS';
+    COMPLETED: 'COMPLETED';
+  };
 
-  export enum PaymentStatus {
-    PENDING = 'PENDING',
-    SUCCEEDED = 'SUCCEEDED',
-    FAILED = 'FAILED',
-    REFUNDED = 'REFUNDED'
-  }
+  export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED';
+  export const PaymentStatus: {
+    PENDING: 'PENDING';
+    SUCCEEDED: 'SUCCEEDED';
+    FAILED: 'FAILED';
+    REFUNDED: 'REFUNDED';
+  };
 
-  export enum SyncStatus {
-    PENDING = 'PENDING',
-    SYNCED = 'SYNCED',
-    FAILED = 'FAILED'
-  }
+  export type SyncStatus = 'PENDING' | 'SYNCED' | 'FAILED';
+  export const SyncStatus: {
+    PENDING: 'PENDING';
+    SYNCED: 'SYNCED';
+    FAILED: 'FAILED';
+  };
 
-  export enum NotificationType {
-    PROJECT_UPDATE = 'PROJECT_UPDATE',
-    MILESTONE_COMPLETED = 'MILESTONE_COMPLETED',
-    DELIVERABLE_READY = 'DELIVERABLE_READY',
-    MESSAGE_RECEIVED = 'MESSAGE_RECEIVED',
-    PAYMENT_RECEIVED = 'PAYMENT_RECEIVED',
-    REVISION_REQUESTED = 'REVISION_REQUESTED',
-    SYSTEM = 'SYSTEM'
-  }
+  export type NotificationType = 'PROJECT_UPDATE' | 'MILESTONE_COMPLETED' | 'DELIVERABLE_READY' | 'MESSAGE_RECEIVED' | 'PAYMENT_RECEIVED' | 'REVISION_REQUESTED' | 'SYSTEM';
+  export const NotificationType: {
+    PROJECT_UPDATE: 'PROJECT_UPDATE';
+    MILESTONE_COMPLETED: 'MILESTONE_COMPLETED';
+    DELIVERABLE_READY: 'DELIVERABLE_READY';
+    MESSAGE_RECEIVED: 'MESSAGE_RECEIVED';
+    PAYMENT_RECEIVED: 'PAYMENT_RECEIVED';
+    REVISION_REQUESTED: 'REVISION_REQUESTED';
+    SYSTEM: 'SYSTEM';
+  };
 
-  export enum SubscriptionStatus {
-    ACTIVE = 'ACTIVE',
-    CANCELED = 'CANCELED',
-    PAST_DUE = 'PAST_DUE',
-    TRIALING = 'TRIALING',
-    PAUSED = 'PAUSED'
-  }
+  export type SubscriptionStatus = 'ACTIVE' | 'CANCELED' | 'PAST_DUE' | 'TRIALING' | 'PAUSED' | 'PENDING' | 'TRIAL';
+  export const SubscriptionStatus: {
+    ACTIVE: 'ACTIVE';
+    CANCELED: 'CANCELED';
+    PAST_DUE: 'PAST_DUE';
+    TRIALING: 'TRIALING';
+    PAUSED: 'PAUSED';
+    PENDING: 'PENDING';
+    TRIAL: 'TRIAL';
+  };
 
-  export enum TeamRole {
-    OWNER = 'OWNER',
-    ADMIN = 'ADMIN',
-    DESIGNER = 'DESIGNER',
-    VIEWER = 'VIEWER'
-  }
+  export type TeamRole = 'OWNER' | 'ADMIN' | 'DESIGNER' | 'VIEWER';
+  export const TeamRole: {
+    OWNER: 'OWNER';
+    ADMIN: 'ADMIN';
+    DESIGNER: 'DESIGNER';
+    VIEWER: 'VIEWER';
+  };
 
-  export enum ReferralStatus {
-    PENDING = 'PENDING',
-    CLICKED = 'CLICKED',
-    SIGNED_UP = 'SIGNED_UP',
-    CONVERTED = 'CONVERTED',
-    REWARDED = 'REWARDED'
-  }
+  export type ReferralStatus = 'PENDING' | 'CLICKED' | 'SIGNED_UP' | 'CONVERTED' | 'REWARDED';
+  export const ReferralStatus: {
+    PENDING: 'PENDING';
+    CLICKED: 'CLICKED';
+    SIGNED_UP: 'SIGNED_UP';
+    CONVERTED: 'CONVERTED';
+    REWARDED: 'REWARDED';
+  };
 
   // Model types
   export type User = {
@@ -194,6 +212,8 @@ declare module '@prisma/client' {
     passwordHash: string | null;
     name: string | null;
     type: UserType;
+    tier?: number;
+    role?: string;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -272,6 +292,7 @@ declare module '@prisma/client' {
     id: string;
     userId: string;
     role: TeamRole;
+    name?: string;
     createdAt: Date;
     updatedAt: Date;
   };

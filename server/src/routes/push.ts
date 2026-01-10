@@ -4,8 +4,13 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import pushService from '../services/pushService';
+
+// Type for authenticated request (use type assertion in handlers)
+interface AuthenticatedRequest extends Request {
+  user: { id: string; email: string; userType: string };
+}
 
 const router = Router();
 
@@ -45,7 +50,7 @@ router.post('/subscribe', requireAuth, async (req: AuthenticatedRequest, res: Re
       });
     }
 
-    const subscription = await pushService.subscribe(userId, {
+    await pushService.saveSubscription(userId, {
       endpoint,
       keys: {
         p256dh: keys.p256dh,
@@ -55,7 +60,7 @@ router.post('/subscribe', requireAuth, async (req: AuthenticatedRequest, res: Re
 
     res.json({
       success: true,
-      data: { subscriptionId: subscription.id },
+      data: { message: 'Subscribed successfully' },
     });
   } catch (error) {
     console.error('Failed to subscribe:', error);
@@ -82,7 +87,7 @@ router.delete('/unsubscribe', requireAuth, async (req: AuthenticatedRequest, res
       });
     }
 
-    await pushService.unsubscribe(userId, endpoint);
+    await pushService.removeSubscription(endpoint);
 
     res.json({
       success: true,

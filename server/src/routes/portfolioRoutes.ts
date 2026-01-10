@@ -19,13 +19,14 @@ const router = Router();
  */
 router.get('/', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const { page, limit, category, style, featured } = req.query;
+    const { page, limit, tag, projectType, featured } = req.query;
 
     const portfolios = await portfolioService.getPublicPortfolios({
       page: page ? parseInt(page as string, 10) : undefined,
       limit: limit ? parseInt(limit as string, 10) : undefined,
-      category: category as string,
-      style: style as string,
+      tag: tag as string,
+      projectType: projectType as string,
+      featured: featured === 'true',
     });
 
     res.json(portfolios);
@@ -58,8 +59,8 @@ router.get('/featured', async (req: Request, res: Response) => {
  */
 router.get('/categories', async (req: Request, res: Response) => {
   try {
-    const categories = await portfolioService.getPortfolioCategories();
-    res.json(categories);
+    const tags = await portfolioService.getPortfolioTags();
+    res.json(tags);
   } catch (error) {
     console.error('Error fetching categories:', error);
     res.status(500).json({ error: 'Failed to fetch categories' });
@@ -228,7 +229,8 @@ router.post('/:id/feature', requireAuth, async (req: Request, res: Response) => 
 
     const { id } = req.params;
     const { featured } = req.body;
-    const portfolio = await portfolioService.setFeatured(id, featured !== false);
+    // Use toggleFeatured for simple toggle, or update with featured field
+    const portfolio = await portfolioService.updatePortfolio(id, { featured: featured !== false });
     res.json(portfolio);
   } catch (error: any) {
     console.error('Error featuring portfolio:', error);

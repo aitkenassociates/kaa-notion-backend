@@ -127,10 +127,11 @@ router.post('/forgot-password', passwordResetRateLimit, async (req: Request, res
     });
 
     // Send reset email
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
     const emailResult = await sendPasswordResetEmail({
-      email: user.email!,
-      name: user.name || undefined,
-      resetToken: token,
+      to: user.email!,
+      name: user.name || 'User',
+      resetUrl,
       expiresIn: TOKEN_EXPIRY_DISPLAY,
     });
 

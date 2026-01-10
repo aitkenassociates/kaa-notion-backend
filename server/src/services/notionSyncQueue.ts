@@ -764,7 +764,7 @@ export function initNotionSync(config: NotionSyncConfig): NotionSyncQueue {
  */
 export async function queueProjectSync(projectId: string, operation: SyncOperation): Promise<void> {
   const queue = getNotionSyncQueue();
-  await queue.queueSync({ entityType: 'PROJECT', entityId: projectId, operation });
+  queue.enqueue({ entityType: 'PROJECT', entityId: projectId, operation, priority: 1, payload: {} });
 }
 
 /**
@@ -772,7 +772,7 @@ export async function queueProjectSync(projectId: string, operation: SyncOperati
  */
 export async function queueMilestoneSync(milestoneId: string, operation: SyncOperation): Promise<void> {
   const queue = getNotionSyncQueue();
-  await queue.queueSync({ entityType: 'MILESTONE', entityId: milestoneId, operation });
+  queue.enqueue({ entityType: 'MILESTONE', entityId: milestoneId, operation, priority: 2, payload: {} });
 }
 
 /**
@@ -780,7 +780,7 @@ export async function queueMilestoneSync(milestoneId: string, operation: SyncOpe
  */
 export async function queueDeliverableSync(deliverableId: string, operation: SyncOperation): Promise<void> {
   const queue = getNotionSyncQueue();
-  await queue.queueSync({ entityType: 'DELIVERABLE', entityId: deliverableId, operation });
+  queue.enqueue({ entityType: 'DELIVERABLE', entityId: deliverableId, operation, priority: 3, payload: {} });
 }
 
 /**
@@ -788,7 +788,7 @@ export async function queueDeliverableSync(deliverableId: string, operation: Syn
  */
 export async function queueLeadSync(leadId: string, operation: SyncOperation): Promise<void> {
   const queue = getNotionSyncQueue();
-  await queue.queueSync({ entityType: 'LEAD', entityId: leadId, operation });
+  queue.enqueue({ entityType: 'LEAD', entityId: leadId, operation, priority: 4, payload: {} });
 }
 
 export default NotionSyncQueue;
