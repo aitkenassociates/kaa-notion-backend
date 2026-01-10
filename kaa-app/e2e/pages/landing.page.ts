@@ -72,4 +72,12 @@ export class LandingPageObject {
   async getHeroSubtitle(): Promise<string> {
     return (await this.heroSubtitle.textContent()) ?? '';
   }
+
+  // Alias for heroSection (used in some tests)
+  get heroSection() {
+    return this.heroTitle.locator('..');
+  }
 }
+
+// Alias for backward compatibility
+export { LandingPageObject as LandingPage };
