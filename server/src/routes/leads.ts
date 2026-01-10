@@ -307,7 +307,7 @@ export function createLeadsRouter(prisma: PrismaClient): Router {
       }
 
       const { page, limit, status, tier, search, startDate, endDate } =
-        req.query as LeadFiltersInput;
+        req.query as unknown as LeadFiltersInput;
       const skip = (page - 1) * limit;
 
       // Build where clause

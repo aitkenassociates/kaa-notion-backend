@@ -212,6 +212,7 @@ declare module '@prisma/client' {
     passwordHash: string | null;
     name: string | null;
     type: UserType;
+    userType: UserType; // Alias for type
     tier?: number;
     role?: string;
     createdAt: Date;

@@ -331,13 +331,13 @@ export async function executeTransaction<T>(
       maxWait: opts.maxWait,
       timeout: opts.timeout,
       isolationLevel: opts.isolationLevel,
-    });
-    
+    }) as T;
+
     const duration = Date.now() - start;
     recordQuery(duration);
-    
+
     logger.debug('Transaction completed', { duration });
-    
+
     return result;
   } catch (error) {
     const duration = Date.now() - start;

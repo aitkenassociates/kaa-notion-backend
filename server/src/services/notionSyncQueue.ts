@@ -96,7 +96,7 @@ export class NotionSyncQueue {
   /**
    * Add a task to the sync queue
    */
-  enqueue(task: Omit<SyncTask, 'id' | 'status' | 'attempts' | 'lastError' | 'lastAttemptAt' | 'createdAt' | 'scheduledFor'>): string {
+  enqueue(task: Omit<SyncTask, 'id' | 'status' | 'attempts' | 'maxAttempts' | 'lastError' | 'lastAttemptAt' | 'createdAt' | 'scheduledFor'> & { maxAttempts?: number }): string {
     const id = this.generateTaskId();
     const fullTask: SyncTask = {
       ...task,

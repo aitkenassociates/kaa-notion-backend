@@ -135,10 +135,10 @@ export function createProjectsRouter(prisma: PrismaClient): Router {
    *       401:
    *         $ref: '#/components/responses/UnauthorizedError'
    */
-  router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const query = req.query as ListProjectsQuery;
-      const user = req.user!;
+      const user = req.user as AuthenticatedUser;
 
       // Pagination
       const page = Math.max(1, parseInt(query.page || '1'));
@@ -296,10 +296,10 @@ export function createProjectsRouter(prisma: PrismaClient): Router {
    *       404:
    *         $ref: '#/components/responses/NotFoundError'
    */
-  router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  router.get('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const user = req.user!;
+      const user = req.user as AuthenticatedUser;
 
       // Get project with all related data
       const project = await prisma.project.findUnique({
@@ -528,7 +528,7 @@ export function createProjectsRouter(prisma: PrismaClient): Router {
    *       404:
    *         $ref: '#/components/responses/NotFoundError'
    */
-  router.patch('/:id', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  router.patch('/:id', requireAuth, requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { status, paymentStatus, notionPageId } = req.body;

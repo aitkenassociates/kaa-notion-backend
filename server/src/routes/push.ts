@@ -7,12 +7,14 @@ import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
 import pushService from '../services/pushService';
 
-// Type for authenticated request (use type assertion in handlers)
-interface AuthenticatedRequest extends Request {
-  user: { id: string; email: string; userType: string };
-}
-
 const router = Router();
+
+// Helper to get user from request
+function getUser(req: Request): { id: string; email: string; userType: string } {
+  const user = (req as any).user;
+  if (!user) throw new Error('User not authenticated');
+  return user;
+}
 
 /**
  * GET /api/push/vapid-key
@@ -38,10 +40,10 @@ router.get('/vapid-key', (_req: Request, res: Response) => {
  * POST /api/push/subscribe
  * Subscribe to push notifications
  */
-router.post('/subscribe', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/subscribe', requireAuth, async (req: Request, res: Response) => {
   try {
     const { endpoint, keys } = req.body;
-    const userId = req.user!.id;
+    const user = getUser(req);
 
     if (!endpoint || !keys?.p256dh || !keys?.auth) {
       return res.status(400).json({
@@ -50,7 +52,7 @@ router.post('/subscribe', requireAuth, async (req: AuthenticatedRequest, res: Re
       });
     }
 
-    await pushService.saveSubscription(userId, {
+    await pushService.saveSubscription(user.id, {
       endpoint,
       keys: {
         p256dh: keys.p256dh,
@@ -75,10 +77,9 @@ router.post('/subscribe', requireAuth, async (req: AuthenticatedRequest, res: Re
  * DELETE /api/push/unsubscribe
  * Unsubscribe from push notifications
  */
-router.delete('/unsubscribe', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/unsubscribe', requireAuth, async (req: Request, res: Response) => {
   try {
     const { endpoint } = req.body;
-    const userId = req.user!.id;
 
     if (!endpoint) {
       return res.status(400).json({
@@ -106,10 +107,10 @@ router.delete('/unsubscribe', requireAuth, async (req: AuthenticatedRequest, res
  * GET /api/push/status
  * Check if user has active push subscriptions
  */
-router.get('/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/status', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.id;
-    const subscriptions = await pushService.getUserSubscriptions(userId);
+    const user = getUser(req);
+    const subscriptions = await pushService.getUserSubscriptions(user.id);
 
     res.json({
       success: true,
@@ -131,11 +132,11 @@ router.get('/status', requireAuth, async (req: AuthenticatedRequest, res: Respon
  * POST /api/push/test
  * Send a test push notification (for debugging)
  */
-router.post('/test', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/test', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.id;
+    const user = getUser(req);
 
-    const result = await pushService.sendToUser(userId, {
+    const result = await pushService.sendToUser(user.id, {
       title: 'Test Notification',
       body: 'Push notifications are working correctly!',
       icon: '/icons/icon-192x192.png',

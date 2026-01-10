@@ -8,13 +8,12 @@
  * - PATCH /api/milestones/:id - Update milestone status (admin only)
  */
 
-import { Router, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient, MilestoneStatus as PrismaMilestoneStatus } from '@prisma/client';
-import { AuthenticatedRequest } from './projects';
 import { MilestoneStatus } from '../services/projectService';
 import { logger } from '../logger';
 import { internalError } from '../utils/AppError';
-import { requireAuth, requireAdmin } from '../middleware';
+import { requireAuth, requireAdmin, type AuthenticatedUser } from '../middleware';
 
 // ============================================================================
 // TYPES
@@ -136,10 +135,10 @@ export function createMilestonesRouter(prisma: PrismaClient): Router {
   router.get(
     '/projects/:projectId/milestones',
     requireAuth,
-    async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { projectId } = req.params;
-        const user = req.user!;
+        const user = req.user as AuthenticatedUser;
 
         // Get project with milestones
         const project = await prisma.project.findUnique({
@@ -210,10 +209,10 @@ export function createMilestonesRouter(prisma: PrismaClient): Router {
   router.get(
     '/milestones/:id',
     requireAuth,
-    async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { id } = req.params;
-        const user = req.user!;
+        const user = req.user as AuthenticatedUser;
 
         // Get milestone with project info
         const milestone = await prisma.milestone.findUnique({
@@ -315,11 +314,11 @@ export function createMilestonesRouter(prisma: PrismaClient): Router {
     '/milestones/:id',
     requireAuth,
     requireAdmin,
-    async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { id } = req.params;
         const body = req.body as UpdateMilestoneBody;
-        const user = req.user!;
+        const user = req.user as AuthenticatedUser;
 
         // Validate status if provided
         if (body.status && !Object.values(MilestoneStatus).includes(body.status)) {

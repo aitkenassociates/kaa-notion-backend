@@ -63,9 +63,9 @@ function isOriginAllowed(origin: string | undefined): boolean {
 /**
  * Dynamic CORS options based on request origin
  */
-const corsOptionsDelegate: CorsOptionsDelegate = (
-  req: Request,
-  callback: (err: Error | null, options?: CorsOptions) => void
+const corsOptionsDelegate: CorsOptionsDelegate<Request> = (
+  req,
+  callback
 ) => {
   const origin = req.header('Origin');
   const allowed = isOriginAllowed(origin);

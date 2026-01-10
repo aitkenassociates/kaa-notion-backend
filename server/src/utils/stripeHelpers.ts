@@ -121,7 +121,7 @@ function applyPriceIdsFromEnvironment(): void {
     3: process.env.STRIPE_TIER3_PRICE_ID,
   };
 
-  (Object.keys(envPriceIds) as Array<keyof typeof envPriceIds>).forEach((tierKey) => {
+  (Object.keys(envPriceIds) as unknown as Array<keyof typeof envPriceIds>).forEach((tierKey) => {
     const priceId = envPriceIds[tierKey];
     if (priceId) {
       TIER_PRICING[tierKey].priceId = priceId;

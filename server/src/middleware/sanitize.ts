@@ -201,13 +201,14 @@ export function strictSanitize(
       ip: req.ip,
     });
 
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: {
         code: 'INVALID_INPUT',
         message: 'Request contains invalid characters',
       },
     });
+    return;
   }
 
   // Still sanitize the input

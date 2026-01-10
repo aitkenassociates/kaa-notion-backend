@@ -196,6 +196,7 @@ export class AppError extends Error {
   public readonly isOperational: boolean;
   public readonly timestamp: Date;
   public readonly originalCause?: Error;
+  public readonly cause?: Error; // ES2022 Error cause property
 
   constructor(
     codeOrOptions: ErrorCode | AppErrorOptions,
