@@ -121,3 +121,16 @@ export {
   getCsrfToken,
   type CsrfConfig,
 } from './csrf';
+
+// Correlation ID / Request Tracing
+export {
+  correlationId,
+  getCorrelationId,
+  createChildCorrelationId,
+  getRequestContext,
+  asyncContextMiddleware,
+  getAsyncContext,
+  getCurrentCorrelationId,
+  runWithContext,
+  type CorrelationIdConfig,
+} from './correlationId';

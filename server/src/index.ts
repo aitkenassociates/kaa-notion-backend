@@ -364,27 +364,87 @@ const server = app.listen(port, () => {
   logger.info('API health check: http://localhost:3001/api/health');
 });
 
-// Graceful shutdown
-async function shutdown() {
-  logger.info('Shutting down gracefully...');
-  
-  // Close WebSocket server
-  shutdownRealtimeService();
-  wss.close(() => {
-    logger.info('WebSocket server closed');
-  });
-  
-  // Close HTTP server
-  server.close(() => {
-    logger.info('HTTP server closed');
-  });
-  
-  // Disconnect Prisma
-  await prisma.$disconnect();
-  logger.info('Database connection closed');
-  
-  process.exit(0);
+// Graceful shutdown with connection draining
+const SHUTDOWN_TIMEOUT = parseInt(process.env.SHUTDOWN_TIMEOUT || '30000', 10); // 30 seconds default
+let isShuttingDown = false;
+
+async function shutdown(signal: string) {
+  if (isShuttingDown) {
+    logger.warn('Shutdown already in progress, ignoring signal', { signal });
+    return;
+  }
+
+  isShuttingDown = true;
+  logger.info(`Received ${signal}, starting graceful shutdown...`);
+
+  // Create a timeout to force shutdown if graceful shutdown takes too long
+  const forceShutdownTimer = setTimeout(() => {
+    logger.error('Graceful shutdown timeout exceeded, forcing exit');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT);
+
+  try {
+    // 1. Stop accepting new connections and complete in-flight requests
+    logger.info('Stopping HTTP server...');
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          logger.error('Error closing HTTP server', { error: err.message });
+          reject(err);
+        } else {
+          logger.info('HTTP server closed, no longer accepting connections');
+          resolve();
+        }
+      });
+    });
+
+    // 2. Close WebSocket connections gracefully
+    logger.info('Closing WebSocket connections...');
+    shutdownRealtimeService();
+    await new Promise<void>((resolve) => {
+      wss.close(() => {
+        logger.info('WebSocket server closed');
+        resolve();
+      });
+    });
+
+    // 3. Close database connection pool
+    logger.info('Disconnecting from database...');
+    await prisma.$disconnect();
+    logger.info('Database connection closed');
+
+    // Clear the force shutdown timer
+    clearTimeout(forceShutdownTimer);
+
+    logger.info('Graceful shutdown completed successfully');
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during graceful shutdown', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    clearTimeout(forceShutdownTimer);
+    process.exit(1);
+  }
 }
 
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown); 
+// Handle shutdown signals
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Handle uncaught exceptions and unhandled rejections
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', { error: error.message, stack: error.stack });
+  captureException(error);
+  shutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled rejection', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+  });
+  if (reason instanceof Error) {
+    captureException(reason);
+  }
+  // Don't shutdown on unhandled rejection, just log it
+  // shutdown('unhandledRejection');
+}); 
