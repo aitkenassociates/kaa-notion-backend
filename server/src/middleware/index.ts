@@ -112,3 +112,12 @@ export {
   requireNotionService,
   requireStorageService,
 } from './featureFlagGuard';
+
+// CSRF Protection
+export {
+  csrfProtection,
+  csrfTokenGenerator,
+  csrfTokenEndpoint,
+  getCsrfToken,
+  type CsrfConfig,
+} from './csrf';

@@ -1,0 +1,148 @@
+# Dependabot Configuration
+# Automatically creates PRs to update dependencies
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  # NPM dependencies for root package.json
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+    reviewers:
+      - "aitkenassociates/developers"
+    # Group minor and patch updates together
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Ignore major version updates for potentially breaking packages
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+
+  # Server workspace dependencies
+  - package-ecosystem: "npm"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps(server)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "server"
+    groups:
+      express-ecosystem:
+        patterns:
+          - "express"
+          - "express-*"
+          - "@types/express*"
+      testing:
+        patterns:
+          - "jest"
+          - "@types/jest"
+          - "supertest"
+          - "@types/supertest"
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+        exclude-patterns:
+          - "express*"
+          - "jest*"
+          - "supertest*"
+
+  # Frontend (kaa-app) workspace dependencies
+  - package-ecosystem: "npm"
+    directory: "/kaa-app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps(frontend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "frontend"
+    groups:
+      react-ecosystem:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-router*"
+          - "@types/react*"
+      testing:
+        patterns:
+          - "@testing-library/*"
+          - "jest*"
+          - "@types/jest"
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+        exclude-patterns:
+          - "react*"
+          - "@testing-library/*"
+          - "jest*"
+
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "ci"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"

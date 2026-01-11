@@ -211,6 +211,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # NPM Audit for dependency vulnerabilities
+      - name: Run npm audit (backend)
+        working-directory: ./server
+        run: |
+          npm ci
+          npm audit --audit-level=high --omit=dev || echo "::warning::Backend has vulnerabilities. Review npm audit output."
+        continue-on-error: true
+
+      - name: Run npm audit (frontend)
+        working-directory: ./kaa-app
+        run: |
+          npm ci
+          npm audit --audit-level=high --omit=dev || echo "::warning::Frontend has vulnerabilities. Review npm audit output."
+        continue-on-error: true
+
+      # Trivy filesystem scanner
       - name: Run Trivy vulnerability scanner (backend)
         uses: aquasecurity/trivy-action@master
         with:

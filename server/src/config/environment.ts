@@ -133,6 +133,20 @@ export function validateEnvironment(): ValidationResult {
     if (!config.FRONTEND_URL) {
       warnings.push('FRONTEND_URL not set - email links may not work correctly');
     }
+
+    // Database SSL enforcement for production
+    const dbUrl = config.DATABASE_URL.toLowerCase();
+    if (!dbUrl.includes('sslmode=require') && !dbUrl.includes('ssl=true') && !dbUrl.includes('sslmode=verify')) {
+      warnings.push(
+        'DATABASE_URL does not include SSL mode - add ?sslmode=require for encrypted connections. ' +
+        'Example: postgres://user:pass@host:5432/db?sslmode=require'
+      );
+    }
+
+    // Check for non-secure database connections
+    if (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) {
+      warnings.push('DATABASE_URL points to localhost in production - this is likely a misconfiguration');
+    }
   }
 
   // Development warnings
