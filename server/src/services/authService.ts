@@ -5,7 +5,10 @@
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { PrismaClient, User, UserType } from '@prisma/client';
+import { sendPasswordResetEmail } from './emailService';
+import { logger } from '../logger';
 
 // ============================================================================
 // TYPES
@@ -381,29 +384,136 @@ export async function refreshAccessToken(
 }
 
 // ============================================================================
-// PASSWORD RESET (Placeholder for future implementation)
+// PASSWORD RESET
 // ============================================================================
 
+// Password reset token expiration time
+const PASSWORD_RESET_EXPIRES_IN = '1h'; // 1 hour
+const PASSWORD_RESET_EXPIRES_MINUTES = 60;
+
+interface PasswordResetPayload {
+  userId: string;
+  email: string;
+  type: 'password_reset';
+  jti: string; // Unique token ID to prevent reuse
+}
+
+// In-memory store for used reset tokens (in production, use Redis)
+const usedResetTokens = new Set<string>();
+
 /**
- * Initiate password reset - generates a reset token.
- * Note: In production, this should send an email with a reset link.
+ * Generate a password reset token
+ */
+function generatePasswordResetToken(userId: string, email: string): string {
+  const jti = crypto.randomUUID(); // Unique token ID
+
+  return jwt.sign(
+    {
+      userId,
+      email,
+      type: 'password_reset',
+      jti,
+    } as PasswordResetPayload,
+    authConfig.jwtSecret,
+    { expiresIn: PASSWORD_RESET_EXPIRES_IN }
+  );
+}
+
+/**
+ * Verify a password reset token
+ */
+function verifyPasswordResetToken(token: string): PasswordResetPayload {
+  try {
+    const payload = jwt.verify(token, authConfig.jwtSecret) as PasswordResetPayload;
+
+    if (payload.type !== 'password_reset') {
+      throw new Error('Invalid token type');
+    }
+
+    // Check if token has already been used
+    if (usedResetTokens.has(payload.jti)) {
+      throw new Error('Token has already been used');
+    }
+
+    return payload;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error('Password reset link has expired');
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new Error('Invalid password reset link');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Mark a reset token as used (prevent reuse)
+ */
+function markResetTokenAsUsed(jti: string): void {
+  usedResetTokens.add(jti);
+
+  // Clean up old tokens periodically (keep set from growing indefinitely)
+  // In production, this would use Redis with TTL
+  if (usedResetTokens.size > 10000) {
+    const tokens = Array.from(usedResetTokens);
+    tokens.slice(0, 5000).forEach(t => usedResetTokens.delete(t));
+  }
+}
+
+/**
+ * Initiate password reset - generates a reset token and sends email.
  */
 export async function initiatePasswordReset(
   prisma: PrismaClient,
   email: string
 ): Promise<{ message: string }> {
+  const normalizedEmail = email.toLowerCase().trim();
+
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
+    where: { email: normalizedEmail },
   });
 
   // Always return success message to prevent email enumeration
+  const successMessage = 'If an account exists with this email, you will receive a password reset link';
+
   if (!user) {
-    return { message: 'If an account exists, a reset link will be sent' };
+    logger.info('Password reset requested for non-existent email', {
+      email: normalizedEmail.substring(0, 3) + '***' // Partial email for debugging
+    });
+    return { message: successMessage };
   }
 
-  // TODO: Generate reset token, store it, and send email
-  // For now, just return the message
-  return { message: 'If an account exists, a reset link will be sent' };
+  // Generate reset token
+  const resetToken = generatePasswordResetToken(user.id, normalizedEmail);
+
+  // Send email
+  try {
+    const result = await sendPasswordResetEmail({
+      to: normalizedEmail,
+      name: user.name || 'User',
+      resetToken,
+      expiresInMinutes: PASSWORD_RESET_EXPIRES_MINUTES,
+    });
+
+    if (!result.success) {
+      logger.error('Failed to send password reset email', {
+        userId: user.id,
+        error: result.error
+      });
+      // Don't reveal email delivery failure to prevent enumeration
+    } else {
+      logger.info('Password reset email sent', { userId: user.id });
+    }
+  } catch (error) {
+    logger.error('Error sending password reset email', {
+      userId: user.id,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    // Don't reveal email delivery failure to prevent enumeration
+  }
+
+  return { message: successMessage };
 }
 
 /**
@@ -411,9 +521,44 @@ export async function initiatePasswordReset(
  */
 export async function completePasswordReset(
   prisma: PrismaClient,
-  _resetToken: string,
-  _newPassword: string
+  resetToken: string,
+  newPassword: string
 ): Promise<{ message: string }> {
-  // TODO: Verify reset token, update password
-  return { message: 'Password reset functionality not yet implemented' };
+  // Validate new password
+  if (!newPassword || newPassword.length < 8) {
+    throw new Error('Password must be at least 8 characters long');
+  }
+
+  // Verify the reset token
+  const payload = verifyPasswordResetToken(resetToken);
+
+  // Find the user
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Verify email matches (extra security check)
+  if (user.email?.toLowerCase() !== payload.email.toLowerCase()) {
+    throw new Error('Invalid password reset link');
+  }
+
+  // Hash the new password
+  const passwordHash = await hashPassword(newPassword);
+
+  // Update the password
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash },
+  });
+
+  // Mark token as used to prevent reuse
+  markResetTokenAsUsed(payload.jti);
+
+  logger.info('Password reset completed', { userId: user.id });
+
+  return { message: 'Password has been reset successfully' };
 }

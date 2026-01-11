@@ -15,6 +15,8 @@ import {
   verifyToken,
   extractToken,
   refreshAccessToken,
+  initiatePasswordReset,
+  completePasswordReset,
 } from '../services/authService';
 import { validationError, unauthorized, notFound } from '../utils/AppError';
 import { logger } from '../logger';
@@ -383,20 +385,40 @@ export function createAuthRouter(prisma: PrismaClient): Router {
   );
 
   /**
-   * POST /password/reset-request
-   * Request a password reset email.
+   * @openapi
+   * /api/auth/password/reset-request:
+   *   post:
+   *     summary: Request a password reset email
+   *     tags: [Auth]
+   *     security: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - email
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *     responses:
+   *       200:
+   *         description: Password reset email sent (if account exists)
+   *       422:
+   *         $ref: '#/components/responses/ValidationError'
    */
   router.post(
     '/password/reset-request',
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { email } = req.body;
-        
+
         if (!email || typeof email !== 'string') {
           throw validationError('Email is required');
         }
 
-        const { initiatePasswordReset } = await import('../services/authService');
         const result = await initiatePasswordReset(prisma, email);
 
         res.json({
@@ -404,6 +426,83 @@ export function createAuthRouter(prisma: PrismaClient): Router {
           message: result.message,
         });
       } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /api/auth/password/reset:
+   *   post:
+   *     summary: Complete password reset with new password
+   *     tags: [Auth]
+   *     security: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - token
+   *               - password
+   *             properties:
+   *               token:
+   *                 type: string
+   *                 description: Password reset token from email
+   *               password:
+   *                 type: string
+   *                 minLength: 8
+   *                 description: New password
+   *     responses:
+   *       200:
+   *         description: Password reset successfully
+   *       400:
+   *         description: Invalid or expired token
+   *       422:
+   *         $ref: '#/components/responses/ValidationError'
+   */
+  router.post(
+    '/password/reset',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { token, password } = req.body;
+
+        if (!token || typeof token !== 'string') {
+          throw validationError('Reset token is required');
+        }
+
+        if (!password || typeof password !== 'string') {
+          throw validationError('New password is required');
+        }
+
+        if (password.length < 8) {
+          throw validationError('Password must be at least 8 characters long');
+        }
+
+        const result = await completePasswordReset(prisma, token, password);
+
+        logger.info('Password reset completed via API');
+
+        res.json({
+          success: true,
+          message: result.message,
+        });
+      } catch (error) {
+        const message = (error as Error).message;
+
+        // Handle specific error cases
+        if (message.includes('expired') || message.includes('Invalid') || message.includes('already been used')) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_RESET_TOKEN',
+              message,
+            },
+          });
+        }
+
         next(error);
       }
     }

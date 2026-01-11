@@ -16,6 +16,7 @@ import { AuthenticatedRequest } from './projects';
 import { logger } from '../logger';
 import { internalError } from '../utils/AppError';
 import { recordDeliverableUploaded } from '../config/metrics';
+import { getStorageService } from '../services/storageService';
 
 // ============================================================================
 // TYPES
@@ -584,13 +585,38 @@ export function createDeliverablesRouter(prisma: PrismaClient): Router {
           });
         }
 
+        // Delete file from Supabase Storage first
+        try {
+          const storageService = getStorageService();
+          const deleteResult = await storageService.deleteFile(deliverable.filePath);
+
+          if (!deleteResult.success) {
+            logger.warn('Failed to delete file from storage', {
+              deliverableId: id,
+              filePath: deliverable.filePath,
+              error: deleteResult.error,
+            });
+            // Continue with database deletion even if storage deletion fails
+            // The file can be cleaned up later via a maintenance task
+          } else {
+            logger.info('File deleted from storage', {
+              deliverableId: id,
+              filePath: deliverable.filePath,
+            });
+          }
+        } catch (storageError) {
+          // Storage service may not be initialized in some environments
+          logger.warn('Storage service not available for file deletion', {
+            deliverableId: id,
+            filePath: deliverable.filePath,
+            error: storageError instanceof Error ? storageError.message : 'Unknown error',
+          });
+        }
+
         // Delete from database
         await prisma.deliverable.delete({
           where: { id },
         });
-
-        // TODO: Delete file from Supabase Storage
-        // await supabase.storage.from('deliverables').remove([deliverable.filePath]);
 
         // Log the deletion
         await prisma.auditLog.create({

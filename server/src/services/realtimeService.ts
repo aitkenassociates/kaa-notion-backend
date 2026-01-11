@@ -6,6 +6,7 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { FigmaClient } from '../figma-client';
 import { logger } from '../logger';
+import { verifyToken, TokenPayload } from './authService';
 
 // ============================================================================
 // TYPES
@@ -165,10 +166,49 @@ function handleConnection(socket: WebSocket, request: { url?: string }): void {
     return;
   }
 
-  // TODO: In production, verify the token here
+  // Verify the JWT token
   if (!token) {
     logger.warn('WebSocket connection rejected - missing token', { userId });
     socket.close(4001, 'Invalid token');
+    return;
+  }
+
+  let tokenPayload: TokenPayload;
+  try {
+    tokenPayload = verifyToken(token, 'access');
+  } catch (error) {
+    logger.warn('WebSocket connection rejected - invalid token', {
+      userId,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    socket.close(4001, 'Invalid or expired token');
+    return;
+  }
+
+  // Verify that the token belongs to the claimed user
+  if (tokenPayload.userId !== userId) {
+    logger.warn('WebSocket connection rejected - token/userId mismatch', {
+      claimedUserId: userId,
+      tokenUserId: tokenPayload.userId
+    });
+    socket.close(4003, 'Token does not match user');
+    return;
+  }
+
+  // Verify that the userType matches the token
+  const tokenUserType = tokenPayload.userType.toLowerCase();
+  const claimedUserType = userType.toLowerCase();
+  // Map SAGE_CLIENT/KAA_CLIENT to 'client' for comparison
+  const normalizedTokenType = tokenUserType.includes('client') ? 'client' :
+                               tokenUserType === 'admin' ? 'admin' :
+                               tokenUserType === 'team' ? 'team' : tokenUserType;
+
+  if (normalizedTokenType !== claimedUserType && claimedUserType !== 'admin') {
+    logger.warn('WebSocket connection rejected - userType mismatch', {
+      claimedUserType: userType,
+      tokenUserType: tokenPayload.userType
+    });
+    socket.close(4003, 'User type does not match token');
     return;
   }
 

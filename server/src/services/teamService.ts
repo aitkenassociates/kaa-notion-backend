@@ -5,8 +5,92 @@
 
 import { PrismaClient, TeamRole, TeamMember, User } from '@prisma/client';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import { sendTeamInviteEmail } from './emailService';
+import { hashPassword } from './authService';
+import { logger } from '../logger';
 
 const prisma = new PrismaClient();
+
+// ============================================
+// INVITE TOKEN MANAGEMENT
+// ============================================
+
+const INVITE_TOKEN_EXPIRES_IN = '7d'; // 7 days
+const INVITE_TOKEN_EXPIRES_DAYS = 7;
+
+interface InviteTokenPayload {
+  userId: string;
+  email: string;
+  role: TeamRole;
+  type: 'team_invite';
+  jti: string;
+}
+
+// In-memory store for used invite tokens (in production, use Redis)
+const usedInviteTokens = new Set<string>();
+
+/**
+ * Generate a team invite token
+ */
+function generateInviteToken(userId: string, email: string, role: TeamRole): string {
+  const jti = crypto.randomUUID();
+  const jwtSecret = process.env.JWT_SECRET || 'development-secret-key';
+
+  return jwt.sign(
+    {
+      userId,
+      email,
+      role,
+      type: 'team_invite',
+      jti,
+    } as InviteTokenPayload,
+    jwtSecret,
+    { expiresIn: INVITE_TOKEN_EXPIRES_IN }
+  );
+}
+
+/**
+ * Verify a team invite token
+ */
+export function verifyInviteToken(token: string): InviteTokenPayload {
+  const jwtSecret = process.env.JWT_SECRET || 'development-secret-key';
+
+  try {
+    const payload = jwt.verify(token, jwtSecret) as InviteTokenPayload;
+
+    if (payload.type !== 'team_invite') {
+      throw new Error('Invalid token type');
+    }
+
+    if (usedInviteTokens.has(payload.jti)) {
+      throw new Error('Invitation has already been used');
+    }
+
+    return payload;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error('Invitation has expired');
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new Error('Invalid invitation link');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Mark an invite token as used
+ */
+function markInviteTokenAsUsed(jti: string): void {
+  usedInviteTokens.add(jti);
+
+  // Clean up old tokens periodically
+  if (usedInviteTokens.size > 10000) {
+    const tokens = Array.from(usedInviteTokens);
+    tokens.slice(0, 5000).forEach(t => usedInviteTokens.delete(t));
+  }
+}
 
 // ============================================
 // TYPES
@@ -171,16 +255,116 @@ export async function inviteTeamMember(
     },
   });
 
-  // Generate invite token
-  const inviteToken = crypto.randomBytes(32).toString('hex');
+  // Generate invite token (JWT-based, no storage needed)
+  const inviteToken = generateInviteToken(user.id, input.email, input.role);
 
-  // TODO: Store invite token and send email
+  // Get inviter's name for the email
+  const inviter = await prisma.user.findUnique({
+    where: { id: input.invitedById },
+    select: { name: true, email: true },
+  });
+
+  const inviterName = inviter?.name || inviter?.email || 'A team member';
+
+  // Send invitation email
+  try {
+    const result = await sendTeamInviteEmail({
+      to: input.email,
+      name: input.name || 'Team Member',
+      inviterName,
+      role: input.role,
+      inviteToken,
+      expiresInDays: INVITE_TOKEN_EXPIRES_DAYS,
+    });
+
+    if (!result.success) {
+      logger.error('Failed to send team invite email', {
+        userId: user.id,
+        error: result.error,
+      });
+      // Continue even if email fails - admin can resend
+    } else {
+      logger.info('Team invite email sent', {
+        userId: user.id,
+        email: input.email,
+        role: input.role,
+      });
+    }
+  } catch (error) {
+    logger.error('Error sending team invite email', {
+      userId: user.id,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    // Continue even if email fails
+  }
 
   return { user, teamMember, inviteToken };
 }
 
 /**
- * Accept team invitation
+ * Accept team invitation using invite token
+ */
+export async function acceptInviteWithToken(
+  inviteToken: string,
+  password: string,
+  name?: string
+): Promise<{ user: User; teamMember: TeamMember }> {
+  // Verify the invite token
+  const payload = verifyInviteToken(inviteToken);
+
+  // Find the team member record
+  const teamMember = await prisma.teamMember.findUnique({
+    where: { userId: payload.userId },
+  });
+
+  if (!teamMember) {
+    throw new Error('Team member record not found');
+  }
+
+  if (teamMember.acceptedAt) {
+    throw new Error('Invitation has already been accepted');
+  }
+
+  // Validate password
+  if (!password || password.length < 8) {
+    throw new Error('Password must be at least 8 characters long');
+  }
+
+  // Hash the password
+  const passwordHash = await hashPassword(password);
+
+  // Update user with password and optional name
+  const user = await prisma.user.update({
+    where: { id: payload.userId },
+    data: {
+      passwordHash,
+      ...(name && { name }),
+    },
+  });
+
+  // Mark invitation as accepted
+  const updatedTeamMember = await prisma.teamMember.update({
+    where: { userId: payload.userId },
+    data: {
+      acceptedAt: new Date(),
+    },
+  });
+
+  // Mark token as used to prevent reuse
+  markInviteTokenAsUsed(payload.jti);
+
+  logger.info('Team invitation accepted', {
+    userId: user.id,
+    email: user.email,
+    role: teamMember.role,
+  });
+
+  return { user, teamMember: updatedTeamMember };
+}
+
+/**
+ * Accept team invitation (legacy method - requires userId to be known)
+ * @deprecated Use acceptInviteWithToken instead
  */
 export async function acceptInvite(
   userId: string,
@@ -198,13 +382,16 @@ export async function acceptInvite(
     throw new Error('Invitation already accepted');
   }
 
-  // Update user password
-  // Note: In production, hash the password properly
+  // Validate password
+  if (!password || password.length < 8) {
+    throw new Error('Password must be at least 8 characters long');
+  }
+
+  // Hash and update user password
+  const passwordHash = await hashPassword(password);
   await prisma.user.update({
     where: { id: userId },
-    data: {
-      passwordHash: password, // Should be hashed
-    },
+    data: { passwordHash },
   });
 
   // Mark invitation as accepted

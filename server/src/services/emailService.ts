@@ -48,6 +48,149 @@ export interface EmailResult {
 
 export const EmailTemplates = {
   /**
+   * Team invitation email
+   */
+  teamInvite: (data: {
+    name: string;
+    inviterName: string;
+    role: string;
+    inviteUrl: string;
+    expiresInDays: number;
+  }) => ({
+    subject: 'You\'ve been invited to join SAGE!',
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Invitation</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #059669 0%, #0d9488 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 28px;">You're Invited!</h1>
+  </div>
+
+  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 18px;">Hi ${data.name || 'there'},</p>
+
+    <p><strong>${data.inviterName}</strong> has invited you to join the SAGE team as a <strong>${data.role}</strong>.</p>
+
+    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #059669;">
+      <p style="margin: 0;">As a ${data.role}, you'll be able to collaborate on landscape design projects, manage deliverables, and communicate with clients.</p>
+    </div>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${data.inviteUrl}" style="background: #059669; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+        Accept Invitation
+      </a>
+    </div>
+
+    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+      <p style="margin: 0; color: #92400e; font-size: 14px;">
+        <strong>This invitation expires in ${data.expiresInDays} days.</strong>
+      </p>
+    </div>
+
+    <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+    <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+      &copy; ${new Date().getFullYear()} SAGE Landscape Design. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+    text: `
+You're Invited to Join SAGE!
+
+Hi ${data.name || 'there'},
+
+${data.inviterName} has invited you to join the SAGE team as a ${data.role}.
+
+As a ${data.role}, you'll be able to collaborate on landscape design projects, manage deliverables, and communicate with clients.
+
+Accept your invitation here:
+${data.inviteUrl}
+
+This invitation expires in ${data.expiresInDays} days.
+
+If you didn't expect this invitation, you can safely ignore this email.
+
+© ${new Date().getFullYear()} SAGE Landscape Design. All rights reserved.
+    `,
+  }),
+
+  /**
+   * Password reset email
+   */
+  passwordReset: (data: { name: string; resetUrl: string; expiresInMinutes: number }) => ({
+    subject: 'Reset Your SAGE Password',
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Your Password</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #059669 0%, #0d9488 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 28px;">Reset Your Password</h1>
+  </div>
+
+  <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 18px;">Hi ${data.name || 'there'},</p>
+
+    <p>We received a request to reset your password. Click the button below to create a new password:</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${data.resetUrl}" style="background: #059669; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+        Reset Password
+      </a>
+    </div>
+
+    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+      <p style="margin: 0; color: #92400e; font-size: 14px;">
+        <strong>This link expires in ${data.expiresInMinutes} minutes.</strong>
+      </p>
+    </div>
+
+    <p style="color: #666; font-size: 14px;">If you didn't request this password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+
+    <p style="color: #666; font-size: 14px;">For security, this link can only be used once.</p>
+
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+    <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+      &copy; ${new Date().getFullYear()} SAGE Landscape Design. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+    text: `
+Reset Your Password
+
+Hi ${data.name || 'there'},
+
+We received a request to reset your password. Visit the link below to create a new password:
+
+${data.resetUrl}
+
+This link expires in ${data.expiresInMinutes} minutes.
+
+If you didn't request this password reset, you can safely ignore this email. Your password will remain unchanged.
+
+For security, this link can only be used once.
+
+© ${new Date().getFullYear()} SAGE Landscape Design. All rights reserved.
+    `,
+  }),
+
+  /**
    * Welcome email after registration
    */
   welcome: (data: { name: string; email: string; tier: number; loginUrl: string }) => ({
@@ -604,6 +747,66 @@ export async function sendDeliverableNotification(data: {
   });
 }
 
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(data: {
+  to: string;
+  name: string;
+  resetToken: string;
+  expiresInMinutes?: number;
+}): Promise<EmailResult> {
+  const expiresInMinutes = data.expiresInMinutes || 60;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const resetUrl = `${frontendUrl}/reset-password?token=${data.resetToken}`;
+
+  const template = EmailTemplates.passwordReset({
+    name: data.name,
+    resetUrl,
+    expiresInMinutes,
+  });
+
+  return sendEmail({
+    to: data.to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    tags: ['password-reset', 'security'],
+  });
+}
+
+/**
+ * Send team invitation email
+ */
+export async function sendTeamInviteEmail(data: {
+  to: string;
+  name: string;
+  inviterName: string;
+  role: string;
+  inviteToken: string;
+  expiresInDays?: number;
+}): Promise<EmailResult> {
+  const expiresInDays = data.expiresInDays || 7;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const inviteUrl = `${frontendUrl}/accept-invite?token=${data.inviteToken}`;
+
+  const template = EmailTemplates.teamInvite({
+    name: data.name,
+    inviterName: data.inviterName,
+    role: data.role,
+    inviteUrl,
+    expiresInDays,
+  });
+
+  return sendEmail({
+    to: data.to,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    tags: ['team-invite', 'onboarding'],
+  });
+}
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -615,5 +818,7 @@ export default {
   sendPaymentConfirmation,
   sendMilestoneNotification,
   sendDeliverableNotification,
+  sendPasswordResetEmail,
+  sendTeamInviteEmail,
   EmailTemplates,
 };
